@@ -1,0 +1,7 @@
+.idea/
+mp2.iml
+DS.Store
+
+bin/
+dist/
+**/*.class
