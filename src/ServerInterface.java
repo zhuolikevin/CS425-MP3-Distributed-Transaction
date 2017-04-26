@@ -26,5 +26,21 @@ public interface ServerInterface extends Remote {
    * @return "Success", "Fail" or "Abort"
    * @throws RemoteException
    */
-  String tentativePut(String transactionId, String key) throws RemoteException;
+  String tryPut(String transactionId, String key) throws RemoteException;
+
+  /**
+   * A client's action attempt to read an object
+   * @param transactionId
+   * @param key
+   * @return "Success", "Fail" or "Abort"
+   * @throws RemoteException
+   */
+  String tryGet(String transactionId, String key) throws RemoteException;
+
+  /**
+   * Release all the locks occupied by this transaction
+   * @param transactionId
+   * @throws RemoteException
+   */
+  void releaseLocks(String transactionId) throws RemoteException;
 }

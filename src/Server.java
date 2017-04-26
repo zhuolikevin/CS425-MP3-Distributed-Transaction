@@ -43,7 +43,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
   }
 
   @Override
-  public String tentativePut(String transactionId, String key) throws RemoteException {
+  public String tryPut(String transactionId, String key) throws RemoteException {
     // If this key is not set yet, the client can continue
     if (!storage.containsKey(key)) {
       return "Success";
@@ -74,6 +74,45 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
     }
   }
 
+  @Override
+  public String tryGet(String transactionId, String key) throws RemoteException {
+    // If this key is not set yet, the client can continue
+    if (!storage.containsKey(key)) {
+      return "Success";
+    }
+    ServerObject targetObj = storage.get(key);
+
+    if (!targetObj.getWriteLock()) {
+      // Nobody is using the writeLock, then we can read (No matter if anyone else is also reading)
+      targetObj.setReadLock(true);
+      targetObj.readLockOwner.add(transactionId);
+      return "Success";
+    } else {
+      // Somebody is writing, we can not read
+      return "Fail";
+    }
+  }
+
+  @Override
+  public void releaseLocks(String transactionId) throws RemoteException {
+    for (String key : storage.keySet()) {
+      ServerObject curObj = storage.get(key);
+
+      // Reset writeLock
+      if (curObj.writeLockOwner != null && curObj.writeLockOwner.equals(transactionId)) {
+        curObj.writeLockOwner = null;
+        curObj.setWriteLock(false);
+      }
+      // Reset readLock
+      if (curObj.readLockOwner.contains(transactionId)) {
+        curObj.readLockOwner.remove(transactionId);
+        if (curObj.readLockOwner.size() == 0) {
+          curObj.setReadLock(false);
+        }
+      }
+    }
+  }
+
   private void userConsole() {
     Scanner scan = new Scanner(System.in);
     String input = scan.nextLine();
@@ -93,7 +132,10 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
             ServerObject valueObj = storage.get(key);
             System.out.print(key + " : " + valueObj.getValue());
             if (showLocks) {
-              System.out.print(" <R-" + valueObj.getReadLock() + ", W-" + valueObj.getWriteLock() + ">");
+              System.out.print(" <R-" + valueObj.getReadLock() + ", ");
+              String[] transactionIds = valueObj.readLockOwner.toArray(new String[valueObj.readLockOwner.size()]);
+              System.out.print(String.join(",", transactionIds));
+              System.out.print("><W-" + valueObj.getWriteLock() + ", " + valueObj.writeLockOwner + ">");
             }
             System.out.print("\n");
           }

@@ -5,6 +5,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Scanner;
 
 public class Client {
@@ -12,6 +13,7 @@ public class Client {
   private boolean transactionFlag;
   private HashMap<String, ServerInterface> serverInterfaceHashMap;
   private HashMap<String, HashMap<String, String>> tentativeStorage;
+  private HashSet<String> readLockOccupiedServerSet;
 
   private static final String RES_PREFIX = "../res/";
 
@@ -20,6 +22,7 @@ public class Client {
     this.serverInterfaceHashMap = new HashMap<>();
     this.transactionFlag = false;
     this.tentativeStorage = new HashMap<>();
+    this.readLockOccupiedServerSet = new HashSet<>();
 
     // Set up connections with servers
     for (int i = 0; i < addressList.size(); i++) {
@@ -45,7 +48,39 @@ public class Client {
   }
 
   private void commitTransaction() {
-    // TODO
+    // Send all the tentative changes to corresponding servers
+    for (String serverName : tentativeStorage.keySet()) {
+      ServerInterface targetServer = serverInterfaceHashMap.get(serverName);
+      HashMap<String, String> fakeServerStorage = tentativeStorage.get(serverName);
+
+      for (String key : fakeServerStorage.keySet()) {
+        try {
+          targetServer.put(key, fakeServerStorage.get(key));
+        } catch (RemoteException e) {
+          e.printStackTrace();
+        }
+      }
+
+      try {
+        targetServer.releaseLocks(transactionId);
+      } catch (RemoteException e) {
+        e.printStackTrace();
+      }
+    }
+
+    // Some server we make only read operation. And readLocks on these servers need to be released
+    for (String serverName : readLockOccupiedServerSet) {
+      ServerInterface targetServer = serverInterfaceHashMap.get(serverName);
+      try {
+        targetServer.releaseLocks(transactionId);
+      } catch (RemoteException e) {
+        e.printStackTrace();
+      }
+    }
+
+    // Finished a transaction, clear tentative local storage and read server set
+    tentativeStorage.clear();
+    readLockOccupiedServerSet.clear();
   }
 
   private void abortTransaction() {
@@ -93,10 +128,11 @@ public class Client {
                   tentativeStorage.put(serverName, fakeServerStorage);
                 }
                 // Make write attempts until "Success"
-                String successFlag = targetServer.tentativePut(transactionId, key);
+                String successFlag = targetServer.tryPut(transactionId, key);
                 while (successFlag.equals("Fail")) {
                   try {
                     Thread.sleep(500);
+                    successFlag = targetServer.tryPut(transactionId, key);
                   } catch (InterruptedException e) {
                     e.printStackTrace();
                   }
@@ -122,11 +158,35 @@ public class Client {
                 System.err.println("Server [" + serverName + "] doesn't exist");
               } else {
                 ServerInterface targetServer = serverInterfaceHashMap.get(serverName);
-                String value = targetServer.get(key);
-                if (value == null) {
-                  System.out.println("NOT FOUND");
+
+                HashMap<String, String> fakeServerStorage = tentativeStorage.get(serverName);
+                if (fakeServerStorage != null && fakeServerStorage.containsKey(key)) {
+                  // If local tentative object has the key, just print
+                  System.out.println(serverName + "." + key + " = " + fakeServerStorage.get(key));
                 } else {
-                  System.out.println(serverName + "." + key + " = " + value);
+                  // We do not have this key locally, we need to query servers
+                  // Make read attempts until "Success"
+                  String successFlag = targetServer.tryGet(transactionId, key);
+                  while (successFlag.equals("Fail")) {
+                    try {
+                      Thread.sleep(500);
+                      successFlag = targetServer.tryGet(transactionId, key);
+                    } catch (InterruptedException e) {
+                      e.printStackTrace();
+                    }
+                  }
+                  if (successFlag.equals("Abort")) {
+                    abortTransaction();
+                  } else {
+                    // We can read the object
+                    readLockOccupiedServerSet.add(serverName);
+                    String value = targetServer.get(key);
+                    if (value == null) {
+                      System.out.println("NOT FOUND");
+                    } else {
+                      System.out.println(serverName + "." + key + " = " + value);
+                    }
+                  }
                 }
               }
             }
@@ -134,6 +194,7 @@ public class Client {
           case "COMMIT":
             transactionFlag = false;
             commitTransaction();
+            System.out.println("COMMIT OK");
             break;
           case "ABORT":
             transactionFlag = false;
