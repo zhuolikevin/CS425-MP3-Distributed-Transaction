@@ -17,25 +17,22 @@ public class Client {
 
     // Set up connections with servers
     for (int i = 0; i < addressList.size(); i++) {
-//      String remoteIp = addressList.get(i).split(" ")[0];
-
-      String remoteIp = "localhost";
+      String remoteIp = addressList.get(i).split(" ")[0];
 
       int remotePort = Integer.parseInt(addressList.get(i).split(" ")[1]);
       String remoteName = Character.toString((char) (remotePort - 9936));
 
-      System.out.println(remoteName + "<" + remoteIp + ":" + remotePort + ">");
       try {
         Registry registry = LocateRegistry.getRegistry(remoteIp, remotePort);
         ServerInterface remoteServer = (ServerInterface) registry.lookup(remoteName);
-
-        System.out.println(remoteName + "<" + remoteIp + ":" + remotePort + ">");
 
         this.serverInterfaceHashMap.put(remoteName, remoteServer);
       } catch (Exception e) {
         e.printStackTrace();
       }
     }
+
+    System.out.println("Ready!");
 
     // User input
     userConsole();
@@ -62,9 +59,9 @@ public class Client {
             } else {
               String serverKey = inputs[1];
               String value = inputs[2];
-              String serverName = serverKey.split(".")[0];
-              String key = serverKey.split(".")[1];
-              if (!serverInterfaceHashMap.containsKey(key)) {
+              String serverName = serverKey.split("\\.")[0];
+              String key = serverKey.split("\\.")[1];
+              if (!serverInterfaceHashMap.containsKey(serverName)) {
                 System.err.println("Server [" + serverName + "] doesn't exist");
               } else {
                 ServerInterface targetServer = serverInterfaceHashMap.get(serverName);
@@ -78,9 +75,9 @@ public class Client {
               System.err.println("Invalid command");
             } else {
               String serverKey = inputs[1];
-              String serverName = serverKey.split(".")[0];
-              String key = serverKey.split(".")[1];
-              if (!serverInterfaceHashMap.containsKey(key)) {
+              String serverName = serverKey.split("\\.")[0];
+              String key = serverKey.split("\\.")[1];
+              if (!serverInterfaceHashMap.containsKey(serverName)) {
                 System.err.println("Server [" + serverName + "] doesn't exist");
               } else {
                 ServerInterface targetServer = serverInterfaceHashMap.get(serverName);

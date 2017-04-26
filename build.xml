@@ -26,14 +26,16 @@
     <target name="jar" depends="compile">
         <jar destfile="${dist.dir}\cs425-mp3-server.jar"
              basedir="${build.dir}"
-             includes="Server*.class">
+             includes="Server.class, ServerInterface.class, ServerObject.class"
+             excludes="Client.class">
             <manifest>
                 <attribute name="Main-Class" value="Server" />
             </manifest>
         </jar>
         <jar destfile="${dist.dir}\cs425-mp3-client.jar"
              basedir="${build.dir}"
-             includes="Client*.class">
+             includes="Client.class, ServerInterface.class"
+             excludes="Server.class, ServerObject.class">
             <manifest>
                 <attribute name="Main-Class" value="Client" />
             </manifest>

@@ -1,13 +1,13 @@
-import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.HashMap;
 import java.util.Scanner;
 
-public class Server implements ServerInterface, Serializable {
+public class Server extends UnicastRemoteObject implements ServerInterface {
   private String name;
   private HashMap<String, ServerObject> storage;
 
@@ -31,7 +31,11 @@ public class Server implements ServerInterface, Serializable {
 
   @Override
   public String get(String key) throws RemoteException {
-    return this.storage.get(key).getValue();
+    if (storage.containsKey(key)) {
+      return this.storage.get(key).getValue();
+    } else {
+      return null;
+    }
   }
 
   private void userConsole() {
