@@ -17,4 +17,14 @@ public interface ServerInterface extends Remote {
    * @throws RemoteException
    */
   String get(String key) throws RemoteException;
+
+  /**
+   * A client's action attempt to write to an object.
+   * Do not actually put, but check/initial write lock
+   * @param transactionId Transaction/Client ID for the attempt
+   * @param key Key of the write attempt
+   * @return "Success", "Fail" or "Abort"
+   * @throws RemoteException
+   */
+  String tentativePut(String transactionId, String key) throws RemoteException;
 }

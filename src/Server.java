@@ -26,15 +26,51 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
 
   @Override
   public void put(String key, String value) throws RemoteException {
-    this.storage.put(key, new ServerObject(value));
+    if (storage.containsKey(key)) {
+      storage.get(key).setValue(value);
+    } else {
+      storage.put(key, new ServerObject(value));
+    }
   }
 
   @Override
   public String get(String key) throws RemoteException {
     if (storage.containsKey(key)) {
-      return this.storage.get(key).getValue();
+      return storage.get(key).getValue();
     } else {
       return null;
+    }
+  }
+
+  @Override
+  public String tentativePut(String transactionId, String key) throws RemoteException {
+    // If this key is not set yet, the client can continue
+    if (!storage.containsKey(key)) {
+      return "Success";
+    }
+    ServerObject targetObj = storage.get(key);
+
+    if (!targetObj.getReadLock() && !targetObj.getWriteLock()) {
+      // Nobody is using the object
+      targetObj.setWriteLock(true);
+      targetObj.writeLockOwner = transactionId;
+      return "Success";
+    } else if (targetObj.getReadLock() && !targetObj.getWriteLock()) {
+      // Only readLock is occupied
+      if (targetObj.readLockOwner.size() == 1 && targetObj.readLockOwner.contains(transactionId)) {
+        // The only user of the readLock is this transaction, we can promote
+        targetObj.setWriteLock(true);
+        targetObj.writeLockOwner = transactionId;
+        targetObj.setReadLock(false);
+        targetObj.readLockOwner.remove(transactionId);
+        return "Success";
+      } else {
+        // Share the readLock with somebody else or occupied by others, we cannot promote
+        return "Fail";
+      }
+    } else {
+      // All other cases we can not continue
+      return "Fail";
     }
   }
 
