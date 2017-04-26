@@ -76,9 +76,9 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
 
   @Override
   public String tryGet(String transactionId, String key) throws RemoteException {
-    // If this key is not set yet, the client can continue
+    // If this key is not set yet, abort the transaction
     if (!storage.containsKey(key)) {
-      return "Success";
+      return "ABORT";
     }
     ServerObject targetObj = storage.get(key);
 

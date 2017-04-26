@@ -9,14 +9,34 @@ import java.util.HashSet;
 import java.util.Scanner;
 
 public class Client {
-  private String transactionId;
-  private boolean transactionFlag;
-  private HashMap<String, ServerInterface> serverInterfaceHashMap;
-  private HashMap<String, HashMap<String, String>> tentativeStorage;
-  private HashSet<String> readLockOccupiedServerSet;
-
   private static final String RES_PREFIX = "../res/";
 
+  /**
+   * Transaction Id for this Client
+   */
+  private String transactionId;
+  /**
+   * Transaction flag: true for in a transaction, false for not
+   */
+  private boolean transactionFlag;
+  /**
+   * Map server name to remote interface
+   */
+  private HashMap<String, ServerInterface> serverInterfaceHashMap;
+  /**
+   * Temporary local storage for write operations
+   */
+  private HashMap<String, HashMap<String, String>> tentativeStorage;
+  /**
+   * Record all the servers we took read operation. Use for release readLocks
+   */
+  private HashSet<String> readLockOccupiedServerSet;
+
+  /**
+   * Constructor. Set up connections with servers and initialize user input console
+   * @param addressList
+   * @param transactionId
+   */
   Client(ArrayList<String> addressList, String transactionId) {
     this.transactionId = transactionId;
     this.serverInterfaceHashMap = new HashMap<>();
@@ -47,6 +67,12 @@ public class Client {
     userConsole();
   }
 
+  /**
+   * Commit a transaction.
+   * 1. Send all tentative changes to servers.
+   * 2. Release occupied read and write locks
+   * 3. Clear temporary storage
+   */
   private void commitTransaction() {
     // Send all the tentative changes to corresponding servers
     for (String serverName : tentativeStorage.keySet()) {
@@ -69,7 +95,21 @@ public class Client {
     }
 
     // Some server we make only read operation. And readLocks on these servers need to be released
-    for (String serverName : readLockOccupiedServerSet) {
+    releaseAllReadLocks();
+
+    // Finished a transaction, clear tentative local storage and read server set
+    tentativeStorage.clear();
+    readLockOccupiedServerSet.clear();
+  }
+
+  /**
+   * Abort a transaction.
+   * 1. Release occupied read and write locks
+   * 2. Clear temporary storage
+   */
+  private void abortTransaction() {
+    // Release writeLocks
+    for (String serverName : tentativeStorage.keySet()) {
       ServerInterface targetServer = serverInterfaceHashMap.get(serverName);
       try {
         targetServer.releaseLocks(transactionId);
@@ -78,13 +118,23 @@ public class Client {
       }
     }
 
+    // Release readLocks
+    releaseAllReadLocks();
+
     // Finished a transaction, clear tentative local storage and read server set
     tentativeStorage.clear();
     readLockOccupiedServerSet.clear();
   }
 
-  private void abortTransaction() {
-    // TODO
+  private void releaseAllReadLocks() {
+    for (String serverName : readLockOccupiedServerSet) {
+      ServerInterface targetServer = serverInterfaceHashMap.get(serverName);
+      try {
+        targetServer.releaseLocks(transactionId);
+      } catch (RemoteException e) {
+        e.printStackTrace();
+      }
+    }
   }
 
   private void userConsole() {
@@ -176,6 +226,7 @@ public class Client {
                     }
                   }
                   if (successFlag.equals("Abort")) {
+                    System.out.println("NOT FOUND");
                     abortTransaction();
                   } else {
                     // We can read the object
