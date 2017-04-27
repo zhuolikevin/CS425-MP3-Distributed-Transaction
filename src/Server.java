@@ -68,6 +68,9 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
         // Share the readLock with somebody else or occupied by others, we cannot promote
         return "Fail";
       }
+    } else if (targetObj.writeLockOwner != null && targetObj.writeLockOwner.equals(transactionId)) {
+      // Write lock is set by this transaction, we can continue to use
+      return "Success";
     } else {
       // All other cases we can not continue
       return "Fail";
