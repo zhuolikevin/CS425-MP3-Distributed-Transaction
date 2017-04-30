@@ -36,6 +36,7 @@
             <manifest>
                 <attribute name="Main-Class" value="Server" />
             </manifest>
+            <zipgroupfileset dir="${lib.dir}" includes="**/*.jar" />
         </jar>
         <jar destfile="${dist.dir}\cs425-mp3-client.jar"
              basedir="${build.dir}"
