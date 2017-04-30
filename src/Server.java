@@ -1,17 +1,26 @@
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Scanner;
 
 public class Server extends UnicastRemoteObject implements ServerInterface {
+	
   private String name;
   private HashMap<String, ServerObject> storage;
-
-  Server(String name) throws RemoteException {
+  private static final String RES_PREFIX = "../res/";
+  private CoordinatorInterface coordinator;
+  
+  Server(ArrayList<String> addressList_coordinator, String name) throws RemoteException {
     this.name = name;
     this.storage = new HashMap<>();
 
@@ -19,13 +28,46 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
     registry = LocateRegistry.createRegistry(9936 + (int) name.charAt(0));
     registry.rebind(this.name, this);
 
-    System.out.println("Ready!");
+    System.out.println("Server Ready!");
+    
+    BufferedReader keyboardInput = new BufferedReader(new InputStreamReader(System.in));
+    boolean readyflag_coord = false;
+    while (!readyflag_coord) {
+    	System.out.println("Coordinator ready? (y/n)\n>> ");
+    	try {
+    		//enter y after coordinator says "Ready"
+			readyflag_coord = "y".equals(keyboardInput.readLine());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    }
+    
+    String remoteIp = addressList_coordinator.get(0).split(" ")[0];
+    int remotePort = Integer.parseInt(addressList_coordinator.get(0).split(" ")[1]);
+    String remoteName = Character.toString((char) (remotePort - 9936));
 
+    try {
+      Registry registry_coordinator = LocateRegistry.getRegistry(remoteIp, remotePort);
+      CoordinatorInterface coordinator = (CoordinatorInterface) registry_coordinator.lookup(remoteName);
+
+      this.coordinator = coordinator;
+      
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+      
+    
     userConsole();
+  }
+  
+  @Override 
+  public CoordinatorInterface getCoordinator() throws RemoteException {
+	  return this.coordinator;
   }
 
   @Override
-  public void put(String key, String value) throws RemoteException {
+  public void put(String key, String value) throws RemoteException { 
     if (storage.containsKey(key)) {
       storage.get(key).setValue(value);
     } else {
@@ -44,17 +86,27 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
 
   @Override
   public String tryPut(String transactionId, String key) throws RemoteException {
+	HashSet<String> id_abort = getCoordinator().getIdtoAbort();
+	if (id_abort.contains(transactionId)) {
+		coordinator.getIdtoAbort().remove(transactionId);
+		return "ABORT";
+	}
     // If this key is not set yet, the client can continue
     if (!storage.containsKey(key)) {
-      return "Success";
+      return "SUCCESS";
     }
+    
     ServerObject targetObj = storage.get(key);
-
+    HashSet<String> locking_owners = new HashSet<String> (targetObj.readLockOwner);
+    if (targetObj.writeLockOwner != null)  
+  	    locking_owners.add(targetObj.writeLockOwner);
+    if (locking_owners.contains(transactionId))
+    	locking_owners.remove(transactionId);
     if (!targetObj.getReadLock() && !targetObj.getWriteLock()) {
       // Nobody is using the object
       targetObj.setWriteLock(true);
       targetObj.writeLockOwner = transactionId;
-      return "Success";
+      return "SUCCESS";
     } else if (targetObj.getReadLock() && !targetObj.getWriteLock()) {
       // Only readLock is occupied
       if (targetObj.readLockOwner.size() == 1 && targetObj.readLockOwner.contains(transactionId)) {
@@ -63,36 +115,46 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
         targetObj.writeLockOwner = transactionId;
         targetObj.setReadLock(false);
         targetObj.readLockOwner.remove(transactionId);
-        return "Success";
+        return "SUCCESS";
       } else {
         // Share the readLock with somebody else or occupied by others, we cannot promote
-        return "Fail";
+    	coordinator.addEdgeDetectCycle(transactionId, locking_owners);
+        return "FAIL";
       }
     } else if (targetObj.writeLockOwner != null && targetObj.writeLockOwner.equals(transactionId)) {
       // Write lock is set by this transaction, we can continue to use
-      return "Success";
+      return "SUCCESS";
     } else {
       // All other cases we can not continue
-      return "Fail";
+      coordinator.addEdgeDetectCycle(transactionId, locking_owners);
+      return "FAIL";
     }
   }
 
   @Override
   public String tryGet(String transactionId, String key) throws RemoteException {
+	HashSet<String> id_abort = getCoordinator().getIdtoAbort();
+	if (id_abort.contains(transactionId)) {
+		coordinator.getIdtoAbort().remove(transactionId);
+		return "ABORT";
+	}
     // If this key is not set yet, abort the transaction
     if (!storage.containsKey(key)) {
       return "ABORT";
     }
     ServerObject targetObj = storage.get(key);
-
+    
     if (!targetObj.getWriteLock()) {
       // Nobody is using the writeLock, then we can read (No matter if anyone else is also reading)
       targetObj.setReadLock(true);
       targetObj.readLockOwner.add(transactionId);
-      return "Success";
+      return "SUCCESS";
     } else {
+      HashSet<String> locking_owners = new HashSet<String>();
+      locking_owners.add(targetObj.writeLockOwner);
+      coordinator.addEdgeDetectCycle(transactionId, locking_owners);
       // Somebody is writing, we can not read
-      return "Fail";
+      return "FAIL";
     }
   }
 
@@ -153,11 +215,19 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
     System.exit(0);
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws IOException {
     if (args.length == 1) {
       String name = args[0];
       try {
-        new Server(name);
+          BufferedReader br = new BufferedReader(new FileReader(RES_PREFIX + "address_coordinator_local.txt"));
+          String line = br.readLine();
+          ArrayList<String> addressList_coordinator = new ArrayList<>();
+          while (line != null) {
+        	  addressList_coordinator.add(line);
+        	  line = br.readLine();
+          }
+          br.close();
+          new Server(addressList_coordinator, name);
       } catch (RemoteException e) {
         e.printStackTrace();
       }

@@ -26,8 +26,8 @@
     <target name="jar" depends="compile">
         <jar destfile="${dist.dir}\cs425-mp3-server.jar"
              basedir="${build.dir}"
-             includes="Server.class, ServerInterface.class, ServerObject.class"
-             excludes="Client.class">
+             includes="Server.class, ServerInterface.class, ServerObject.class, CoordinatorInterface.class"
+             excludes="Client.class, Coordinator.class">
             <manifest>
                 <attribute name="Main-Class" value="Server" />
             </manifest>
@@ -35,17 +35,17 @@
         <jar destfile="${dist.dir}\cs425-mp3-client.jar"
              basedir="${build.dir}"
              includes="Client.class, ServerInterface.class"
-             excludes="Server.class, ServerObject.class">
+             excludes="Server.class, ServerObject.class, CoordinatorInterface.class, Coordinator.class">
             <manifest>
                 <attribute name="Main-Class" value="Client" />
             </manifest>
         </jar>
         <jar destfile="${dist.dir}\cs425-mp3-coordinator.jar"
              basedir="${build.dir}"
-             includes="Coordinator.class, ServerInterface.class"
+             includes="Coordinator.class, ServerInterface.class, CoordinatorInterface.class"
              excludes="Server.class, ServerObject.class, Client.class">
             <manifest>
-                <attribute name="Main-Class" value="Client" />
+                <attribute name="Main-Class" value="Coordinator" />
             </manifest>
         </jar>
     </target>

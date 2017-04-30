@@ -3,7 +3,9 @@ import java.io.FileReader;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Scanner;
@@ -61,7 +63,7 @@ public class Client {
       }
     }
 
-    System.out.println("Ready!");
+    System.out.println("Client Ready!");
 
     // User input
     userConsole();
@@ -72,8 +74,9 @@ public class Client {
    * 1. Send all tentative changes to servers.
    * 2. Release occupied read and write locks
    * 3. Clear temporary storage
+ * @throws RemoteException 
    */
-  private void commitTransaction() {
+  private void commitTransaction() throws RemoteException {
     // Send all the tentative changes to corresponding servers
     for (String serverName : tentativeStorage.keySet()) {
       ServerInterface targetServer = serverInterfaceHashMap.get(serverName);
@@ -100,14 +103,19 @@ public class Client {
     // Finished a transaction, clear tentative local storage and read server set
     tentativeStorage.clear();
     readLockOccupiedServerSet.clear();
+    for (ServerInterface server : serverInterfaceHashMap.values()) {
+    	server.getCoordinator().getIdtimeMap().remove(transactionId);
+    	break;
+    }
   }
 
   /**
    * Abort a transaction.
    * 1. Release occupied read and write locks
    * 2. Clear temporary storage
+ * @throws RemoteException 
    */
-  private void abortTransaction() {
+  private void abortTransaction() throws RemoteException {
     // Release writeLocks
     for (String serverName : tentativeStorage.keySet()) {
       ServerInterface targetServer = serverInterfaceHashMap.get(serverName);
@@ -124,6 +132,11 @@ public class Client {
     // Finished a transaction, clear tentative local storage and read server set
     tentativeStorage.clear();
     readLockOccupiedServerSet.clear();
+    for (ServerInterface server : serverInterfaceHashMap.values()) {
+    	server.getCoordinator().getIdtimeMap().remove(transactionId);
+    	break;
+    }
+    System.out.println("Transaction Aborted!");    
   }
 
   private void releaseAllReadLocks() {
@@ -152,6 +165,13 @@ public class Client {
             break;
           case "BEGIN":
             transactionFlag = true;
+            Date date = new Date();
+            Timestamp date_ts = new Timestamp(date.getTime());
+            long l = date_ts.getTime();
+            for (ServerInterface server : serverInterfaceHashMap.values()) {
+            	server.getCoordinator().getIdtimeMap().put(transactionId, l);
+            	break;
+            }
             System.out.println("OK");
             break;
           case "SET":
@@ -179,7 +199,7 @@ public class Client {
                 }
                 // Make write attempts until "Success"
                 String successFlag = targetServer.tryPut(transactionId, key);
-                while (successFlag.equals("Fail")) {
+                while (successFlag.equals("FAIL")) {
                   try {
                     Thread.sleep(500);
                     successFlag = targetServer.tryPut(transactionId, key);
@@ -187,7 +207,7 @@ public class Client {
                     e.printStackTrace();
                   }
                 }
-                if (successFlag.equals("Abort")) {
+                if (successFlag.equals("ABORT")) {
                   abortTransaction();
                 } else {
                   System.out.println("OK");
@@ -208,6 +228,7 @@ public class Client {
                 System.err.println("Server [" + serverName + "] doesn't exist");
               } else {
                 ServerInterface targetServer = serverInterfaceHashMap.get(serverName);
+                //? not committed can read?
 
                 HashMap<String, String> fakeServerStorage = tentativeStorage.get(serverName);
                 if (fakeServerStorage != null && fakeServerStorage.containsKey(key)) {
@@ -217,7 +238,7 @@ public class Client {
                   // We do not have this key locally, we need to query servers
                   // Make read attempts until "Success"
                   String successFlag = targetServer.tryGet(transactionId, key);
-                  while (successFlag.equals("Fail")) {
+                  while (successFlag.equals("FAIL")) {
                     try {
                       Thread.sleep(500);
                       successFlag = targetServer.tryGet(transactionId, key);
@@ -225,7 +246,7 @@ public class Client {
                       e.printStackTrace();
                     }
                   }
-                  if (successFlag.equals("Abort")) {
+                  if (successFlag.equals("ABORT")) {
                     System.out.println("NOT FOUND");
                     abortTransaction();
                   } else {
@@ -257,7 +278,7 @@ public class Client {
       } catch (RemoteException e) {
         e.printStackTrace();
       }
-      input = scan.nextLine();
+      input  = scan.nextLine();
     }
     scan.close();
     System.exit(0);

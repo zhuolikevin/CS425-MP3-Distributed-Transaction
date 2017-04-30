@@ -1,5 +1,6 @@
 import java.rmi.Remote;
 import java.rmi.RemoteException;
+import java.util.HashMap;
 
 public interface ServerInterface extends Remote {
   /**
@@ -8,6 +9,8 @@ public interface ServerInterface extends Remote {
    * @param value
    * @throws RemoteException
    */
+  CoordinatorInterface getCoordinator() throws RemoteException;
+  
   void put(String key, String value) throws RemoteException;
 
   /**

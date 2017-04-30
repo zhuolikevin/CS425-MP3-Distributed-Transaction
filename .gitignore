@@ -1,5 +1,7 @@
 .idea/
-mp2.iml
+.classpath
+.project
+mp3.iml
 DS.Store
 
 bin/
