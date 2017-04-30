@@ -3,6 +3,7 @@
     <property name="src.dir" location="src" />
     <property name="build.dir" location="bin" />
     <property name="dist.dir" location="dist" />
+    <property name="lib.dir" location="lib" />
 
     <!-- Deletes the existing build, docs and dist directory-->
     <target name="clean">
@@ -51,6 +52,7 @@
             <manifest>
                 <attribute name="Main-Class" value="Coordinator" />
             </manifest>
+            <zipgroupfileset dir="${lib.dir}" includes="**/*.jar" />
         </jar>
     </target>
 
