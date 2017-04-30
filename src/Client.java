@@ -111,9 +111,7 @@ public class Client {
     	server.getCoordinator().removeFromIdtimeMap(transactionId);
     	
     	if (server.getCoordinator().containsVertex(transactionId)) {
-    		System.out.println("run into loop!");
     		server.getCoordinator().removeFromGraph(transactionId);
-    		System.out.println("vertex removed from graph!");
     	}
     	break;
     }
@@ -182,9 +180,9 @@ public class Client {
         switch (inputs[0]) {
           case "SERVERS":
             for (String serverName : serverInterfaceHashMap.keySet()) {
-              System.out.println(serverName);
+              System.err.println(serverName);
             }
-            System.out.println("[END] Total Servers: " + serverInterfaceHashMap.keySet().size());
+            System.err.println("[END] Total Servers: " + serverInterfaceHashMap.keySet().size());
             break;
           case "BEGIN":
             abortedFlag = false;

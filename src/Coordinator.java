@@ -39,7 +39,7 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
 	  registry = LocateRegistry.createRegistry(9936 + (int) name.charAt(0));
 	  registry.rebind(this.name, this);
 
-	  System.out.println("Coordinator Ready!");
+	  System.err.println("Coordinator Ready!");
 	  
 	  // Set up connections with servers
     for (int i = 0; i < addressList.size(); i++) {

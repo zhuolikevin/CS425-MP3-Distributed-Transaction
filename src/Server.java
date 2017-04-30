@@ -29,13 +29,13 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
     registry = LocateRegistry.createRegistry(9936 + (int) name.charAt(0));
     registry.rebind(this.name, this);
 
-    System.out.println("Server Ready!");
+    System.err.println("Server Ready!");
 
     // Wait for coordinator ready
     BufferedReader keyboardInput = new BufferedReader(new InputStreamReader(System.in));
     boolean coordinatorReady = false;
     while (!coordinatorReady) {
-    	System.out.print("Coordinator ready? (y/n)\n>> ");
+    	System.err.print("Coordinator ready? (y/n)\n>> ");
     	try {
 			  coordinatorReady = "y".equals(keyboardInput.readLine());
 		  } catch (IOException e) {
@@ -152,7 +152,6 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
       HashSet<String> lockOwners = new HashSet<>();
       lockOwners.add(targetObj.writeLockOwner);
       coordinator.addEdgeDetectCycle(transactionId, lockOwners);
-      System.out.println("Successfully execute addEdgeDetectCycle function!");
       // Somebody is writing, we can not read
       return "FAIL";
     }
@@ -186,7 +185,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
       switch (inputs[0]) {
         case "ME":
           try {
-            System.out.println(name + "<" + InetAddress.getLocalHost().getHostAddress() + ":" + (9936 + (int) name.charAt(0)) + ">");
+            System.err.println(name + "<" + InetAddress.getLocalHost().getHostAddress() + ":" + (9936 + (int) name.charAt(0)) + ">");
           } catch (UnknownHostException e) {
             e.printStackTrace();
           }
@@ -195,16 +194,16 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
           boolean showLocks = inputs.length > 1;
           for (String key : storage.keySet()) {
             ServerObject valueObj = storage.get(key);
-            System.out.print(key + " : " + valueObj.getValue());
+            System.err.print(key + " : " + valueObj.getValue());
             if (showLocks) {
-              System.out.print(" <R-" + valueObj.getReadLock() + ", ");
+              System.err.print(" <R-" + valueObj.getReadLock() + ", ");
               String[] transactionIds = valueObj.readLockOwner.toArray(new String[valueObj.readLockOwner.size()]);
-              System.out.print(String.join(",", transactionIds));
-              System.out.print("><W-" + valueObj.getWriteLock() + ", " + valueObj.writeLockOwner + ">");
+              System.err.print(String.join(",", transactionIds));
+              System.err.print("><W-" + valueObj.getWriteLock() + ", " + valueObj.writeLockOwner + ">");
             }
-            System.out.print("\n");
+            System.err.print("\n");
           }
-          System.out.println("[END] Total Objects: " + storage.keySet().size());
+          System.err.println("[END] Total Objects: " + storage.keySet().size());
           break;
         default:
           System.err.println("Invalid command");
