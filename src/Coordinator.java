@@ -83,8 +83,8 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
 		  {
 			  DefaultEdge edgeAdded;
 			  edgeAdded = graph.addEdge(t1, id);
-			  System.out.println(graph.getEdgeSource(edgeAdded) + "->" + graph.getEdgeTarget(edgeAdded));
-			  System.out.println("Successfully add edge from " + t1 + " to " + id);
+//			  System.out.println(graph.getEdgeSource(edgeAdded) + "->" + graph.getEdgeTarget(edgeAdded));
+//			  System.out.println("Successfully add edge from " + t1 + " to " + id);
 		  }
 	  }
 	  
@@ -110,8 +110,10 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
 		  id_abort.add(latestTransaction);
 //		  graph.removeVertex(latestTransaction);
 		  graphCopy.removeVertex(latestTransaction);
+		  // how to judge if a graph is empty
+		  if (!graphCopy.edgeSet().isEmpty()) {
 		  cycleDetector = new CycleDetector<String, DefaultEdge>(graphCopy);
-		  haveCycle = cycleDetector.detectCycles();
+		  haveCycle = cycleDetector.detectCycles();}
 	  }
 	  return;
   }
@@ -156,6 +158,11 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
 	  this.id_abort.remove(transactionId);
   }
   
+  @Override
+  public Set<String> getVertexSet() throws RemoteException {
+	  return this.graph.vertexSet();
+  }
+ 
   private void userConsole() throws UnknownHostException {
 	    Scanner scan = new Scanner(System.in);
 	    String input = scan.nextLine();
@@ -165,7 +172,7 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
 	        case "GRAPH":
 	          Set<DefaultEdge> allEdges = graph.edgeSet();
 			for (DefaultEdge edge : allEdges) {
-				System.out.println(edge.getSource() + "->" + edge.getTarget());
+				System.out.println(graph.getEdgeSource(edge) + "->" + graph.getEdgeTarget(edge));
 			}
 	          break;
 	        case "IDTIME":

@@ -105,9 +105,15 @@ public class Client {
     tentativeStorage.clear();
     readLockOccupiedServerSet.clear();
     for (ServerInterface server : serverInterfaceHashMap.values()) {
-    	server.getCoordinator().removeFromIdtimeMap(transactionId);;
+    	
+    	server.getCoordinator().removeFromIdtimeMap(transactionId);
+    	
+    	if (server.getCoordinator().getVertexSet().contains(transactionId)) {
+    		server.getCoordinator().removeFromGraph(transactionId);
+    	}
     	break;
     }
+    
   }
 
   /**
@@ -139,8 +145,12 @@ public class Client {
     	
     	if (server.getCoordinator().getIdtoAbort().contains(transactionId)) {
     	server.getCoordinator().removeFromIdtoAbort(transactionId);
-	    server.getCoordinator().removeFromGraph(transactionId);
     	}
+    	
+    	if (server.getCoordinator().getVertexSet().contains(transactionId)) {
+    		server.getCoordinator().removeFromGraph(transactionId);
+    	}
+    	
     	break;
     }
 //	coordinator.getIdtoAbort().remove(transactionId);

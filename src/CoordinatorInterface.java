@@ -2,6 +2,7 @@ import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Set;
 
 import org.jgraph.graph.DefaultEdge;
 import org.jgrapht.DirectedGraph;
@@ -25,5 +26,7 @@ public interface CoordinatorInterface extends Remote {
 	void removeFromGraph(String transactionId) throws RemoteException;
 
 	void removeFromIdtoAbort(String transactionId) throws RemoteException;
+
+	Set<String> getVertexSet() throws RemoteException;
 	
 }
