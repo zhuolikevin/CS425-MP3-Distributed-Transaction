@@ -134,9 +134,16 @@ public class Client {
     readLockOccupiedServerSet.clear();
     for (ServerInterface server : serverInterfaceHashMap.values()) {
     	server.getCoordinator().getIdtimeMap().remove(transactionId);
+    	
+    	if (server.getCoordinator().getIdtoAbort().contains(transactionId)) {
+    	server.getCoordinator().getIdtoAbort().remove(transactionId);
+	    server.getCoordinator().getGraph().removeVertex(transactionId);
+    	}
     	break;
     }
-    System.out.println("Transaction Aborted!");    
+//	coordinator.getIdtoAbort().remove(transactionId);
+    System.out.println("Transaction Aborted!");
+    // TODO ALWAYS ABORT
   }
 
   private void releaseAllReadLocks() {
@@ -270,6 +277,7 @@ public class Client {
             break;
           case "ABORT":
             transactionFlag = false;
+            //
             abortTransaction();
             break;
           default:

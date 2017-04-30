@@ -1,5 +1,7 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -8,11 +10,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Scanner;
+import java.util.Set;
 
 import org.jgraph.graph.DefaultEdge;
 import org.jgrapht.*;
 import org.jgrapht.alg.CycleDetector;
 import org.jgrapht.graph.DefaultDirectedGraph;
+import org.jgrapht.graph.EdgeReversedGraph;
 
 public class Coordinator extends UnicastRemoteObject implements CoordinatorInterface{
 	/**
@@ -26,7 +31,7 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
 	private HashSet<String> id_abort;
 	private DirectedGraph<String, DefaultEdge> graph;
 
-  Coordinator(ArrayList<String> addressList, String name) throws RemoteException {
+  Coordinator(ArrayList<String> addressList, String name) throws RemoteException, UnknownHostException {
 	  
 	  this.name = name;
 	  this.serverInterfaceList = new ArrayList<ServerInterface>();
@@ -57,6 +62,8 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
         e.printStackTrace();
       }
     }
+    
+    userConsole();
 
   }
 
@@ -70,6 +77,10 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
 		  if (!graph.containsEdge(t1, id))
 			  graph.addEdge(t1, id);
 	  }
+	  
+	  DirectedGraph<String, DefaultEdge> revGraph = new EdgeReversedGraph<>(graph);
+	  DirectedGraph<String, DefaultEdge> graphCopy = new EdgeReversedGraph<>(revGraph);
+      
 	  CycleDetector<String, DefaultEdge> cycleDetector = new CycleDetector<String, DefaultEdge>(graph);
 	  boolean haveCycle = cycleDetector.detectCycles();
 	  while (haveCycle) {
@@ -82,8 +93,9 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
 			     latestTransaction = id;
 		  }
 		  id_abort.add(latestTransaction);
-		  graph.removeVertex(latestTransaction);
-		  cycleDetector = new CycleDetector<String, DefaultEdge>(graph);
+//		  graph.removeVertex(latestTransaction);
+		  graphCopy.removeVertex(latestTransaction);
+		  cycleDetector = new CycleDetector<String, DefaultEdge>(graphCopy);
 		  haveCycle = cycleDetector.detectCycles();
 	  }
 	  return;
@@ -98,6 +110,43 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
   public HashSet<String> getIdtoAbort() throws RemoteException {
 	  return this.id_abort;
   }
+  
+  @Override
+  public DirectedGraph<String, DefaultEdge> getGraph() throws RemoteException {
+	  return this.graph;
+  }
+  
+  private void userConsole() throws UnknownHostException {
+	    Scanner scan = new Scanner(System.in);
+	    String input = scan.nextLine();
+	    while(!input.equals("EXIT")) {
+	      String[] inputs = input.split(" ");
+	      switch (inputs[0]) {
+	        case "GRAPH":
+	          Set<DefaultEdge> allEdges = graph.edgeSet();
+			for (DefaultEdge edge : allEdges) {
+				System.out.println(edge.getSource() + "->" + edge.getTarget());
+			}
+	          break;
+	        case "IDTIME":
+	          for (String key : id_time.keySet()) {
+	            long TimeStamp = id_time.get(key);
+	            System.out.println(key + " : " + TimeStamp);
+	          }
+	          System.out.println("[END] Total Transactions: " + id_time.keySet().size());
+	          break;
+	        case "IDABORT":
+	        	for (String id : id_abort) {
+	        		System.out.println(id);
+	        	}
+	        default:
+	          System.err.println("Invalid command");
+	      }
+	      input = scan.nextLine();
+	    }
+	    scan.close();
+	    System.exit(0);
+	  }
   
   public static void main(String[] args) {
     if (args.length == 1) {

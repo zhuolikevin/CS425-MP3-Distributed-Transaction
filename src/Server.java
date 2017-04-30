@@ -88,7 +88,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
   public String tryPut(String transactionId, String key) throws RemoteException {
 	HashSet<String> id_abort = getCoordinator().getIdtoAbort();
 	if (id_abort.contains(transactionId)) {
-		coordinator.getIdtoAbort().remove(transactionId);
+//		coordinator.getIdtoAbort().remove(transactionId);
 		return "ABORT";
 	}
     // If this key is not set yet, the client can continue
@@ -135,7 +135,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
   public String tryGet(String transactionId, String key) throws RemoteException {
 	HashSet<String> id_abort = getCoordinator().getIdtoAbort();
 	if (id_abort.contains(transactionId)) {
-		coordinator.getIdtoAbort().remove(transactionId);
+//		coordinator.getIdtoAbort().remove(transactionId);
 		return "ABORT";
 	}
     // If this key is not set yet, abort the transaction
