@@ -20,43 +20,40 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
   private static final String RES_PREFIX = "../res/";
   private CoordinatorInterface coordinator;
   
-  Server(ArrayList<String> addressList_coordinator, String name) throws RemoteException {
+  Server(ArrayList<String> addressListCoordinator, String name) throws RemoteException {
     this.name = name;
     this.storage = new HashMap<>();
 
+    // Register self, bind to specific port
     Registry registry;
     registry = LocateRegistry.createRegistry(9936 + (int) name.charAt(0));
     registry.rebind(this.name, this);
 
     System.out.println("Server Ready!");
-    
+
+    // Wait for coordinator ready
     BufferedReader keyboardInput = new BufferedReader(new InputStreamReader(System.in));
-    boolean readyflag_coord = false;
-    while (!readyflag_coord) {
-    	System.out.println("Coordinator ready? (y/n)\n>> ");
+    boolean coordinatorReady = false;
+    while (!coordinatorReady) {
+    	System.out.print("Coordinator ready? (y/n)\n>> ");
     	try {
-    		//enter y after coordinator says "Ready"
-			readyflag_coord = "y".equals(keyboardInput.readLine());
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+			  coordinatorReady = "y".equals(keyboardInput.readLine());
+		  } catch (IOException e) {
+			  e.printStackTrace();
+		  }
     }
-    
-    String remoteIp = addressList_coordinator.get(0).split(" ")[0];
-    int remotePort = Integer.parseInt(addressList_coordinator.get(0).split(" ")[1]);
+
+    // Connect with coordinator
+    String remoteIp = addressListCoordinator.get(0).split(" ")[0];
+    int remotePort = Integer.parseInt(addressListCoordinator.get(0).split(" ")[1]);
     String remoteName = Character.toString((char) (remotePort - 9936));
 
     try {
-      Registry registry_coordinator = LocateRegistry.getRegistry(remoteIp, remotePort);
-      CoordinatorInterface coordinator = (CoordinatorInterface) registry_coordinator.lookup(remoteName);
-
-      this.coordinator = coordinator;
-      
+      Registry registryCoordinator = LocateRegistry.getRegistry(remoteIp, remotePort);
+      this.coordinator = (CoordinatorInterface) registryCoordinator.lookup(remoteName);;
     } catch (Exception e) {
       e.printStackTrace();
     }
-      
     
     userConsole();
   }
@@ -86,25 +83,23 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
 
   @Override
   public String tryPut(String transactionId, String key) throws RemoteException {
-	HashSet<String> id_abort = getCoordinator().getIdtoAbort();
-	if (id_abort.contains(transactionId)) {
-//		coordinator.getIdtoAbort().remove(transactionId);
-		return "ABORT";
-	}
+	  // If coordinator says this transaction should be aborted, tell the client to abort
+    HashSet<String> abortingIdSet = getCoordinator().getIdtoAbort();
+    if (abortingIdSet.contains(transactionId)) {
+      return "ABORT";
+    }
+
     // If this key is not set yet, the client can continue
     if (!storage.containsKey(key)) {
       return "SUCCESS";
     }
     
     ServerObject targetObj = storage.get(key);
-    HashSet<String> locking_owners = new HashSet<String> (targetObj.readLockOwner);
-    if (targetObj.writeLockOwner != null)  
-  	    locking_owners.add(targetObj.writeLockOwner);
-    if (locking_owners.contains(transactionId))
-    	locking_owners.remove(transactionId);
-    
-    for (String id : locking_owners) {
-    	System.out.println(id);}
+
+    // Current lock owners despite self
+    HashSet<String> lockOwners = new HashSet<>(targetObj.readLockOwner);
+    if (targetObj.writeLockOwner != null) lockOwners.add(targetObj.writeLockOwner);
+    if (lockOwners.contains(transactionId)) lockOwners.remove(transactionId);
     	
     if (!targetObj.getReadLock() && !targetObj.getWriteLock()) {
       // Nobody is using the object
@@ -122,8 +117,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
         return "SUCCESS";
       } else {
         // Share the readLock with somebody else or occupied by others, we cannot promote
-    	coordinator.addEdgeDetectCycle(transactionId, locking_owners);
-    	System.out.println("Successfully execute addEdgeDetectCycle function!");
+      	coordinator.addEdgeDetectCycle(transactionId, lockOwners);
         return "FAIL";
       }
     } else if (targetObj.writeLockOwner != null && targetObj.writeLockOwner.equals(transactionId)) {
@@ -131,18 +125,18 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
       return "SUCCESS";
     } else {
       // All other cases we can not continue
-      coordinator.addEdgeDetectCycle(transactionId, locking_owners);
+      coordinator.addEdgeDetectCycle(transactionId, lockOwners);
       return "FAIL";
     }
   }
 
   @Override
   public String tryGet(String transactionId, String key) throws RemoteException {
-	HashSet<String> id_abort = getCoordinator().getIdtoAbort();
-	if (id_abort.contains(transactionId)) {
-//		coordinator.getIdtoAbort().remove(transactionId);
-		return "ABORT";
-	}
+    // If coordinator says this transaction should be aborted, tell the client to abort
+    HashSet<String> abortingIdSet = getCoordinator().getIdtoAbort();
+    if (abortingIdSet.contains(transactionId)) {
+      return "ABORT";
+    }
     // If this key is not set yet, abort the transaction
     if (!storage.containsKey(key)) {
       return "ABORT";
@@ -155,9 +149,9 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
       targetObj.readLockOwner.add(transactionId);
       return "SUCCESS";
     } else {
-      HashSet<String> locking_owners = new HashSet<String>();
-      locking_owners.add(targetObj.writeLockOwner);
-      coordinator.addEdgeDetectCycle(transactionId, locking_owners);
+      HashSet<String> lockOwners = new HashSet<String>();
+      lockOwners.add(targetObj.writeLockOwner);
+      coordinator.addEdgeDetectCycle(transactionId, lockOwners);
       System.out.println("Successfully execute addEdgeDetectCycle function!");
       // Somebody is writing, we can not read
       return "FAIL";

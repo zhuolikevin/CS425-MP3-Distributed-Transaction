@@ -67,31 +67,18 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
   }
 
   @Override 
-  public void addEdgeDetectCycle(String t1, HashSet<String> t2) throws RemoteException {
-	  if (!graph.containsVertex(t1))
-	  {
-		  graph.addVertex(t1);
-//		  System.out.println("Successfully add vertex " + t1);
-		  }
-	  for (String id : t2) {
+  public void addEdgeDetectCycle(String transactionId, HashSet<String> lockOwners) throws RemoteException {
+	  if (!graph.containsVertex(transactionId)) graph.addVertex(transactionId);
+	  for (String id : lockOwners) {
 		  if (!graph.containsVertex(id))
 			  {
 			  graph.addVertex(id);
-//			  System.out.println("Successfully add vertex " + id);
 			  }
-		  if (!graph.containsEdge(t1, id))
+		  if (!graph.containsEdge(transactionId, id))
 		  {
-			  DefaultEdge edgeAdded;
-			  edgeAdded = graph.addEdge(t1, id);
-//			  System.out.println(graph.getEdgeSource(edgeAdded) + "->" + graph.getEdgeTarget(edgeAdded));
-//			  System.out.println("Successfully add edge from " + t1 + " to " + id);
+			  graph.addEdge(transactionId, id);
 		  }
 	  }
-	  
-//	  Set<String> vertex = graph.vertexSet();
-//	  for (String id : vertex) {
-//		  System.out.println(id);
-//	  }
 	  
 	  DirectedGraph<String, DefaultEdge> revGraph = new EdgeReversedGraph<>(graph);
 	  DirectedGraph<String, DefaultEdge> graphCopy = new EdgeReversedGraph<>(revGraph);

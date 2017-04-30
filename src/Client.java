@@ -75,7 +75,7 @@ public class Client {
    * 1. Send all tentative changes to servers.
    * 2. Release occupied read and write locks
    * 3. Clear temporary storage
- * @throws RemoteException 
+   * @throws RemoteException
    */
   private void commitTransaction() throws RemoteException {
     // Send all the tentative changes to corresponding servers
@@ -115,7 +115,6 @@ public class Client {
     	}
     	break;
     }
-    
   }
 
   /**
