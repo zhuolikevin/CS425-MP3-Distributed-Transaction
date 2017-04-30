@@ -152,7 +152,7 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
     if (args.length == 1) {
         String name = args[0];
         try{
-        BufferedReader br = new BufferedReader(new FileReader(RES_PREFIX + "address_server_local.txt"));
+        BufferedReader br = new BufferedReader(new FileReader(RES_PREFIX + "address_server.txt"));
         String line = br.readLine();
         ArrayList<String> addressList = new ArrayList<>();
         while (line != null) {

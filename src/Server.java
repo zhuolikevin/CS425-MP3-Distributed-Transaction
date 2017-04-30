@@ -218,7 +218,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
     if (args.length == 1) {
       String name = args[0];
       try {
-          BufferedReader br = new BufferedReader(new FileReader(RES_PREFIX + "address_coordinator_local.txt"));
+          BufferedReader br = new BufferedReader(new FileReader(RES_PREFIX + "address_coordinator.txt"));
           String line = br.readLine();
           ArrayList<String> addressList_coordinator = new ArrayList<>();
           while (line != null) {

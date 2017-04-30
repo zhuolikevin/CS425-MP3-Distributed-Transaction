@@ -315,7 +315,7 @@ public class Client {
       String transactionId = args[0];
       try {
         // Read address book from file to an ArrayList
-        BufferedReader br = new BufferedReader(new FileReader(RES_PREFIX + "address_server_local.txt"));
+        BufferedReader br = new BufferedReader(new FileReader(RES_PREFIX + "address_server.txt"));
         String line = br.readLine();
         ArrayList<String> addressList = new ArrayList<>();
         while (line != null) {
