@@ -1,6 +1,5 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -27,7 +26,7 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
 	private String name;
 	private List<ServerInterface> serverInterfaceList;
 	private static final String RES_PREFIX = "../res/";
-    private HashMap<String, Long> id_time;
+	private HashMap<String, Long> id_time;
 	private HashSet<String> id_abort;
 	private DefaultDirectedGraph<String, DefaultEdge> graph;
 
@@ -72,19 +71,19 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
 	  if (!graph.containsVertex(t1))
 	  {
 		  graph.addVertex(t1);
-		  System.out.println("Successfully add vertex " + t1);
+//		  System.out.println("Successfully add vertex " + t1);
 		  }
 	  for (String id : t2) {
 		  if (!graph.containsVertex(id))
 			  {
 			  graph.addVertex(id);
-			  System.out.println("Successfully add vertex " + id);
+//			  System.out.println("Successfully add vertex " + id);
 			  }
 		  if (!graph.containsEdge(t1, id))
 		  {
 			  DefaultEdge edgeAdded;
 			  edgeAdded = graph.addEdge(t1, id);
-			  System.out.println((String)edgeAdded.getSource() + "->" + (String)edgeAdded.getTarget());
+			  System.out.println(graph.getEdgeSource(edgeAdded) + "->" + graph.getEdgeTarget(edgeAdded));
 			  System.out.println("Successfully add edge from " + t1 + " to " + id);
 		  }
 	  }
