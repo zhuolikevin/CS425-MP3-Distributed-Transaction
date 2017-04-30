@@ -31,9 +31,9 @@ public class DeadlockDetector extends TimerTask {
             latestTransaction = transactionId;
           }
         }
-        thisCoordinator.removeFromGraph(latestTransaction);
         thisCoordinator.addAbortingTransaction(latestTransaction);
       }
+
     } catch (RemoteException e) {
       e.printStackTrace();
     }
