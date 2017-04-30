@@ -40,8 +40,8 @@
         </jar>
         <jar destfile="${dist.dir}\cs425-mp3-client.jar"
              basedir="${build.dir}"
-             includes="Client.class, ServerInterface.class"
-             excludes="Server.class, ServerObject.class, CoordinatorInterface.class, Coordinator.class">
+             includes="Client.class, ServerInterface.class, CoordinatorInterface.class"
+             excludes="Server.class, ServerObject.class, Coordinator.class">
             <manifest>
                 <attribute name="Main-Class" value="Client" />
             </manifest>
