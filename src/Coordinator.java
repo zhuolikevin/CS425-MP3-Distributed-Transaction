@@ -27,9 +27,9 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
 	private String name;
 	private List<ServerInterface> serverInterfaceList;
 	private static final String RES_PREFIX = "../res/";
-	private HashMap<String, Long> id_time;
+    private HashMap<String, Long> id_time;
 	private HashSet<String> id_abort;
-	private DirectedGraph<String, DefaultEdge> graph;
+	private DefaultDirectedGraph<String, DefaultEdge> graph;
 
   Coordinator(ArrayList<String> addressList, String name) throws RemoteException, UnknownHostException {
 	  
@@ -70,13 +70,29 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
   @Override 
   public void addEdgeDetectCycle(String t1, HashSet<String> t2) throws RemoteException {
 	  if (!graph.containsVertex(t1))
+	  {
 		  graph.addVertex(t1);
+		  System.out.println("Successfully add vertex " + t1);
+		  }
 	  for (String id : t2) {
 		  if (!graph.containsVertex(id))
+			  {
 			  graph.addVertex(id);
+			  System.out.println("Successfully add vertex " + id);
+			  }
 		  if (!graph.containsEdge(t1, id))
-			  graph.addEdge(t1, id);
+		  {
+			  DefaultEdge edgeAdded;
+			  edgeAdded = graph.addEdge(t1, id);
+			  System.out.println((String)edgeAdded.getSource() + "->" + (String)edgeAdded.getTarget());
+			  System.out.println("Successfully add edge from " + t1 + " to " + id);
+		  }
 	  }
+	  
+//	  Set<String> vertex = graph.vertexSet();
+//	  for (String id : vertex) {
+//		  System.out.println(id);
+//	  }
 	  
 	  DirectedGraph<String, DefaultEdge> revGraph = new EdgeReversedGraph<>(graph);
 	  DirectedGraph<String, DefaultEdge> graphCopy = new EdgeReversedGraph<>(revGraph);
@@ -102,6 +118,21 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
   }
   
   @Override
+  public void putIntoIdtimeMap (String transactionId, long TimeStamp) throws RemoteException {
+	  this.id_time.put(transactionId, TimeStamp);
+  }
+  
+  @Override
+  public Long getFromIdtimeMap (String transactionId) throws RemoteException {
+	  return this.id_time.get(transactionId);
+  }
+  
+  @Override
+  public void removeFromIdtimeMap (String transactionId) throws RemoteException {
+	  this.id_time.remove(transactionId);
+  }
+
+  @Override
   public HashMap<String, Long> getIdtimeMap() throws RemoteException {
 	  return this.id_time;
   }
@@ -114,6 +145,16 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
   @Override
   public DirectedGraph<String, DefaultEdge> getGraph() throws RemoteException {
 	  return this.graph;
+  }
+  
+  @Override 
+  public void removeFromGraph(String transactionId) throws RemoteException {
+	  this.graph.removeVertex(transactionId);
+  }
+  
+  @Override
+  public void removeFromIdtoAbort(String transactionId) throws RemoteException {
+	  this.id_abort.remove(transactionId);
   }
   
   private void userConsole() throws UnknownHostException {
@@ -139,6 +180,7 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
 	        	for (String id : id_abort) {
 	        		System.out.println(id);
 	        	}
+	        	break;
 	        default:
 	          System.err.println("Invalid command");
 	      }

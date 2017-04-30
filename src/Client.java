@@ -64,6 +64,7 @@ public class Client {
     }
 
     System.out.println("Client Ready!");
+    // --
 
     // User input
     userConsole();
@@ -104,7 +105,7 @@ public class Client {
     tentativeStorage.clear();
     readLockOccupiedServerSet.clear();
     for (ServerInterface server : serverInterfaceHashMap.values()) {
-    	server.getCoordinator().getIdtimeMap().remove(transactionId);
+    	server.getCoordinator().removeFromIdtimeMap(transactionId);;
     	break;
     }
   }
@@ -133,11 +134,12 @@ public class Client {
     tentativeStorage.clear();
     readLockOccupiedServerSet.clear();
     for (ServerInterface server : serverInterfaceHashMap.values()) {
-    	server.getCoordinator().getIdtimeMap().remove(transactionId);
+
+    	server.getCoordinator().removeFromIdtimeMap(transactionId);
     	
     	if (server.getCoordinator().getIdtoAbort().contains(transactionId)) {
-    	server.getCoordinator().getIdtoAbort().remove(transactionId);
-	    server.getCoordinator().getGraph().removeVertex(transactionId);
+    	server.getCoordinator().removeFromIdtoAbort(transactionId);
+	    server.getCoordinator().removeFromGraph(transactionId);
     	}
     	break;
     }
@@ -176,7 +178,7 @@ public class Client {
             Timestamp date_ts = new Timestamp(date.getTime());
             long l = date_ts.getTime();
             for (ServerInterface server : serverInterfaceHashMap.values()) {
-            	server.getCoordinator().getIdtimeMap().put(transactionId, l);
+            	server.getCoordinator().putIntoIdtimeMap(transactionId, l);
             	break;
             }
             System.out.println("OK");

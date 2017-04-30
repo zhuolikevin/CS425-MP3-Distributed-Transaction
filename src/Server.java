@@ -102,6 +102,10 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
   	    locking_owners.add(targetObj.writeLockOwner);
     if (locking_owners.contains(transactionId))
     	locking_owners.remove(transactionId);
+    
+    for (String id : locking_owners) {
+    	System.out.println(id);}
+    	
     if (!targetObj.getReadLock() && !targetObj.getWriteLock()) {
       // Nobody is using the object
       targetObj.setWriteLock(true);
@@ -119,6 +123,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
       } else {
         // Share the readLock with somebody else or occupied by others, we cannot promote
     	coordinator.addEdgeDetectCycle(transactionId, locking_owners);
+    	System.out.println("Successfully execute addEdgeDetectCycle function!");
         return "FAIL";
       }
     } else if (targetObj.writeLockOwner != null && targetObj.writeLockOwner.equals(transactionId)) {
@@ -153,6 +158,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
       HashSet<String> locking_owners = new HashSet<String>();
       locking_owners.add(targetObj.writeLockOwner);
       coordinator.addEdgeDetectCycle(transactionId, locking_owners);
+      System.out.println("Successfully execute addEdgeDetectCycle function!");
       // Somebody is writing, we can not read
       return "FAIL";
     }

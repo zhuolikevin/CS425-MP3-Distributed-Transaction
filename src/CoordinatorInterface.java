@@ -16,4 +16,14 @@ public interface CoordinatorInterface extends Remote {
 
 	DirectedGraph<String, DefaultEdge> getGraph() throws RemoteException;
 
+	void putIntoIdtimeMap(String transactionId, long TimeStamp) throws RemoteException;
+	
+	void removeFromIdtimeMap (String transactionId) throws RemoteException;
+
+	Long getFromIdtimeMap(String transactionId) throws RemoteException;
+
+	void removeFromGraph(String transactionId) throws RemoteException;
+
+	void removeFromIdtoAbort(String transactionId) throws RemoteException;
+	
 }
