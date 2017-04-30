@@ -19,6 +19,10 @@
     <!-- Compiles the java code (including the usage of library for JUnit -->
     <target name="compile" depends="clean, makedir">
         <javac srcdir="${src.dir}" destdir="${build.dir}">
+            <classpath>
+                <pathelement path="lib/jgraph-5.13.0.0.jar"/>
+                <pathelement path="lib/jgrapht-core-1.0.1.jar" />
+            </classpath>
         </javac>
     </target>
 

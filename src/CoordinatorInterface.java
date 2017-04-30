@@ -1,8 +1,9 @@
+import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.HashMap;
 import java.util.HashSet;
 
-public interface CoordinatorInterface {
+public interface CoordinatorInterface extends Remote {
 	
 	HashMap<String, Long> getIdtimeMap() throws RemoteException;
 	
