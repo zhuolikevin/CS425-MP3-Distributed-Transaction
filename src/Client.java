@@ -108,8 +108,10 @@ public class Client {
     	
     	server.getCoordinator().removeFromIdtimeMap(transactionId);
     	
-    	if (server.getCoordinator().getVertexSet().contains(transactionId)) {
+    	if (server.getCoordinator().containsVertex(transactionId)) {
+    		System.out.println("run into loop!");
     		server.getCoordinator().removeFromGraph(transactionId);
+    		System.out.println("vertex removed from graph!");
     	}
     	break;
     }
@@ -147,7 +149,7 @@ public class Client {
     	server.getCoordinator().removeFromIdtoAbort(transactionId);
     	}
     	
-    	if (server.getCoordinator().getVertexSet().contains(transactionId)) {
+    	if (server.getCoordinator().containsVertex(transactionId)) {
     		server.getCoordinator().removeFromGraph(transactionId);
     	}
     	

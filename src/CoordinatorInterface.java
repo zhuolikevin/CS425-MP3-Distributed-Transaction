@@ -28,5 +28,7 @@ public interface CoordinatorInterface extends Remote {
 	void removeFromIdtoAbort(String transactionId) throws RemoteException;
 
 	Set<String> getVertexSet() throws RemoteException;
+
+	boolean containsVertex(String transactionId) throws RemoteException;
 	
 }

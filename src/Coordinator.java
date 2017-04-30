@@ -162,6 +162,11 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
   public Set<String> getVertexSet() throws RemoteException {
 	  return this.graph.vertexSet();
   }
+  
+  @Override
+  public boolean containsVertex(String transactionId) throws RemoteException {
+	  return this.graph.containsVertex(transactionId);
+  }
  
   private void userConsole() throws UnknownHostException {
 	    Scanner scan = new Scanner(System.in);
