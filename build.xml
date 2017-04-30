@@ -45,6 +45,7 @@
             <manifest>
                 <attribute name="Main-Class" value="Client" />
             </manifest>
+            <zipgroupfileset dir="${lib.dir}" includes="**/*.jar" />
         </jar>
         <jar destfile="${dist.dir}\cs425-mp3-coordinator.jar"
              basedir="${build.dir}"
