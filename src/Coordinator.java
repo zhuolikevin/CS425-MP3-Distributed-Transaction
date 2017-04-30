@@ -18,33 +18,30 @@ import org.jgrapht.alg.CycleDetector;
 import org.jgrapht.graph.DefaultDirectedGraph;
 import org.jgrapht.graph.EdgeReversedGraph;
 
-public class Coordinator extends UnicastRemoteObject implements CoordinatorInterface{
-	/**
-	 * 
-	 */
+public class Coordinator extends UnicastRemoteObject implements CoordinatorInterface {
 	private static final long serialVersionUID = 1L;
 	private String name;
 	private List<ServerInterface> serverInterfaceList;
 	private static final String RES_PREFIX = "../res/";
-	private HashMap<String, Long> id_time;
-	private HashSet<String> id_abort;
+	private HashMap<String, Long> transactionTimeMap;
+	private HashSet<String> abortingTransactions;
 	private DefaultDirectedGraph<String, DefaultEdge> graph;
 
   Coordinator(ArrayList<String> addressList, String name) throws RemoteException, UnknownHostException {
-	  
 	  this.name = name;
-	  this.serverInterfaceList = new ArrayList<ServerInterface>();
-	  this.id_time = new HashMap<>();
-	  this.id_abort = new HashSet<>();
-	  this.graph = new DefaultDirectedGraph<String, DefaultEdge>(DefaultEdge.class);
-// The name of the coordinator can be set to F
+	  this.serverInterfaceList = new ArrayList<>();
+	  this.transactionTimeMap = new HashMap<>();
+	  this.abortingTransactions = new HashSet<>();
+	  this.graph = new DefaultDirectedGraph<>(DefaultEdge.class);
+
+    // The name of the coordinator can be set to F
 	  Registry registry;
 	  registry = LocateRegistry.createRegistry(9936 + (int) name.charAt(0));
 	  registry.rebind(this.name, this);
 
 	  System.out.println("Coordinator Ready!");
 	  
-	// Set up connections with servers
+	  // Set up connections with servers
     for (int i = 0; i < addressList.size(); i++) {
       String remoteIp = addressList.get(i).split(" ")[0];
 
@@ -63,43 +60,36 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
     }
     
     userConsole();
-
   }
 
   @Override 
   public void addEdgeDetectCycle(String transactionId, HashSet<String> lockOwners) throws RemoteException {
-	  if (!graph.containsVertex(transactionId)) graph.addVertex(transactionId);
-	  for (String id : lockOwners) {
-		  if (!graph.containsVertex(id))
-			  {
-			  graph.addVertex(id);
-			  }
-		  if (!graph.containsEdge(transactionId, id))
-		  {
-			  graph.addEdge(transactionId, id);
-		  }
+	  graph.addVertex(transactionId);
+	  for (String lockOwnerId : lockOwners) {
+      graph.addVertex(lockOwnerId);
+      graph.addEdge(transactionId, lockOwnerId);
 	  }
 	  
 	  DirectedGraph<String, DefaultEdge> revGraph = new EdgeReversedGraph<>(graph);
 	  DirectedGraph<String, DefaultEdge> graphCopy = new EdgeReversedGraph<>(revGraph);
       
-	  CycleDetector<String, DefaultEdge> cycleDetector = new CycleDetector<String, DefaultEdge>(graph);
+	  CycleDetector<String, DefaultEdge> cycleDetector = new CycleDetector<>(graph);
 	  boolean haveCycle = cycleDetector.detectCycles();
 	  while (haveCycle) {
 		  HashSet<String> cycleId = (HashSet<String>) cycleDetector.findCycles();
 		  long maxTimeStamp = 0;
 		  String latestTransaction = null;
 		  for (String id : cycleId) {
-			  if (id_time.get(id) > maxTimeStamp)
-				 maxTimeStamp = id_time.get(id); 
-			     latestTransaction = id;
+			  if (transactionTimeMap.get(id) > maxTimeStamp) {
+          maxTimeStamp = transactionTimeMap.get(id);
+          latestTransaction = id;
+        }
 		  }
-		  id_abort.add(latestTransaction);
-//		  graph.removeVertex(latestTransaction);
+		  abortingTransactions.add(latestTransaction);
 		  graphCopy.removeVertex(latestTransaction);
 		  // how to judge if a graph is empty
 		  if (!graphCopy.edgeSet().isEmpty()) {
-		  cycleDetector = new CycleDetector<String, DefaultEdge>(graphCopy);
+		  cycleDetector = new CycleDetector<>(graphCopy);
 		  haveCycle = cycleDetector.detectCycles();}
 	  }
 	  return;
@@ -107,52 +97,52 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
   
   @Override
   public void putIntoIdtimeMap (String transactionId, long TimeStamp) throws RemoteException {
-	  this.id_time.put(transactionId, TimeStamp);
+	  transactionTimeMap.put(transactionId, TimeStamp);
   }
   
   @Override
   public Long getFromIdtimeMap (String transactionId) throws RemoteException {
-	  return this.id_time.get(transactionId);
+	  return transactionTimeMap.get(transactionId);
   }
   
   @Override
   public void removeFromIdtimeMap (String transactionId) throws RemoteException {
-	  this.id_time.remove(transactionId);
+	  transactionTimeMap.remove(transactionId);
   }
 
   @Override
   public HashMap<String, Long> getIdtimeMap() throws RemoteException {
-	  return this.id_time;
+	  return transactionTimeMap;
   }
   
   @Override
   public HashSet<String> getIdtoAbort() throws RemoteException {
-	  return this.id_abort;
+	  return abortingTransactions;
   }
   
   @Override
   public DirectedGraph<String, DefaultEdge> getGraph() throws RemoteException {
-	  return this.graph;
+	  return graph;
   }
   
   @Override 
   public void removeFromGraph(String transactionId) throws RemoteException {
-	  this.graph.removeVertex(transactionId);
+	  graph.removeVertex(transactionId);
   }
   
   @Override
   public void removeFromIdtoAbort(String transactionId) throws RemoteException {
-	  this.id_abort.remove(transactionId);
+	  abortingTransactions.remove(transactionId);
   }
   
   @Override
   public Set<String> getVertexSet() throws RemoteException {
-	  return this.graph.vertexSet();
+	  return graph.vertexSet();
   }
   
   @Override
   public boolean containsVertex(String transactionId) throws RemoteException {
-	  return this.graph.containsVertex(transactionId);
+	  return graph.containsVertex(transactionId);
   }
  
   private void userConsole() throws UnknownHostException {
@@ -162,21 +152,22 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
 	      String[] inputs = input.split(" ");
 	      switch (inputs[0]) {
 	        case "GRAPH":
-	          Set<DefaultEdge> allEdges = graph.edgeSet();
-			for (DefaultEdge edge : allEdges) {
-				System.out.println(graph.getEdgeSource(edge) + "->" + graph.getEdgeTarget(edge));
-			}
+            String[] vertexes = graph.vertexSet().toArray(new String[graph.vertexSet().size()]);
+            System.err.println(String.join(",", vertexes));
+            for (DefaultEdge edge : graph.edgeSet()) {
+              System.err.println(graph.getEdgeSource(edge) + "->" + graph.getEdgeTarget(edge));
+            }
 	          break;
 	        case "IDTIME":
-	          for (String key : id_time.keySet()) {
-	            long TimeStamp = id_time.get(key);
-	            System.out.println(key + " : " + TimeStamp);
+	          for (String key : transactionTimeMap.keySet()) {
+	            long timeStamp = transactionTimeMap.get(key);
+	            System.err.println(key + " : " + timeStamp);
 	          }
-	          System.out.println("[END] Total Transactions: " + id_time.keySet().size());
+	          System.err.println("[END] Total Transactions: " + transactionTimeMap.keySet().size());
 	          break;
 	        case "IDABORT":
-	        	for (String id : id_abort) {
-	        		System.out.println(id);
+	        	for (String id : abortingTransactions) {
+	        		System.err.println(id);
 	        	}
 	        	break;
 	        default:

@@ -21,6 +21,8 @@ public class Client {
    * Transaction flag: true for in a transaction, false for not
    */
   private boolean transactionFlag;
+
+  private boolean abortedFlag;
   /**
    * Map server name to remote interface
    */
@@ -43,6 +45,7 @@ public class Client {
     this.transactionId = transactionId;
     this.serverInterfaceHashMap = new HashMap<>();
     this.transactionFlag = false;
+    this.abortedFlag = false;
     this.tentativeStorage = new HashMap<>();
     this.readLockOccupiedServerSet = new HashSet<>();
 
@@ -63,9 +66,6 @@ public class Client {
       }
     }
 
-    System.out.println("Client Ready!");
-    // --
-
     // User input
     userConsole();
   }
@@ -78,6 +78,8 @@ public class Client {
    * @throws RemoteException
    */
   private void commitTransaction() throws RemoteException {
+    transactionFlag = false;
+
     // Send all the tentative changes to corresponding servers
     for (String serverName : tentativeStorage.keySet()) {
       ServerInterface targetServer = serverInterfaceHashMap.get(serverName);
@@ -121,9 +123,12 @@ public class Client {
    * Abort a transaction.
    * 1. Release occupied read and write locks
    * 2. Clear temporary storage
- * @throws RemoteException 
+    * @throws RemoteException
    */
   private void abortTransaction() throws RemoteException {
+    transactionFlag = false;
+    abortedFlag = true;
+
     // Release writeLocks
     for (String serverName : tentativeStorage.keySet()) {
       ServerInterface targetServer = serverInterfaceHashMap.get(serverName);
@@ -154,9 +159,7 @@ public class Client {
     	
     	break;
     }
-//	coordinator.getIdtoAbort().remove(transactionId);
-    System.out.println("Transaction Aborted!");
-    // TODO ALWAYS ABORT
+    System.out.println("ABORT");
   }
 
   private void releaseAllReadLocks() {
@@ -184,6 +187,7 @@ public class Client {
             System.out.println("[END] Total Servers: " + serverInterfaceHashMap.keySet().size());
             break;
           case "BEGIN":
+            abortedFlag = false;
             transactionFlag = true;
             Date date = new Date();
             Timestamp date_ts = new Timestamp(date.getTime());
@@ -195,7 +199,9 @@ public class Client {
             System.out.println("OK");
             break;
           case "SET":
-            if (!transactionFlag) {
+            if (abortedFlag) {
+              System.out.println("ABORT");
+            } else if (!transactionFlag) {
               System.err.println("Please BEGIN before SET");
             } else if (inputs.length != 3) {
               System.err.println("Invalid command");
@@ -236,7 +242,9 @@ public class Client {
             }
             break;
           case "GET":
-            if (!transactionFlag) {
+            if (abortedFlag) {
+              System.out.println("ABORT");
+            } else if (!transactionFlag) {
               System.err.println("Please BEGIN before GET");
             } else if (inputs.length != 2) {
               System.err.println("Invalid command");
@@ -284,13 +292,10 @@ public class Client {
             }
             break;
           case "COMMIT":
-            transactionFlag = false;
             commitTransaction();
             System.out.println("COMMIT OK");
             break;
           case "ABORT":
-            transactionFlag = false;
-            //
             abortTransaction();
             break;
           default:

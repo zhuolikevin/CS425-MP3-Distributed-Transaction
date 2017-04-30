@@ -149,7 +149,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
       targetObj.readLockOwner.add(transactionId);
       return "SUCCESS";
     } else {
-      HashSet<String> lockOwners = new HashSet<String>();
+      HashSet<String> lockOwners = new HashSet<>();
       lockOwners.add(targetObj.writeLockOwner);
       coordinator.addEdgeDetectCycle(transactionId, lockOwners);
       System.out.println("Successfully execute addEdgeDetectCycle function!");
