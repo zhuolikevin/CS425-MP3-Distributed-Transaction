@@ -3,7 +3,9 @@ import java.io.FileReader;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Scanner;
@@ -19,6 +21,10 @@ public class Client {
    * Transaction flag: true for in a transaction, false for not
    */
   private boolean transactionFlag;
+  /**
+   * Aborted flag: true for aborted transaction
+   */
+  private boolean abortedFlag;
   /**
    * Map server name to remote interface
    */
@@ -41,6 +47,7 @@ public class Client {
     this.transactionId = transactionId;
     this.serverInterfaceHashMap = new HashMap<>();
     this.transactionFlag = false;
+    this.abortedFlag = false;
     this.tentativeStorage = new HashMap<>();
     this.readLockOccupiedServerSet = new HashSet<>();
 
@@ -61,8 +68,6 @@ public class Client {
       }
     }
 
-    System.out.println("Ready!");
-
     // User input
     userConsole();
   }
@@ -72,8 +77,11 @@ public class Client {
    * 1. Send all tentative changes to servers.
    * 2. Release occupied read and write locks
    * 3. Clear temporary storage
+   * @throws RemoteException
    */
-  private void commitTransaction() {
+  private void commitTransaction() throws RemoteException {
+    transactionFlag = false;
+
     // Send all the tentative changes to corresponding servers
     for (String serverName : tentativeStorage.keySet()) {
       ServerInterface targetServer = serverInterfaceHashMap.get(serverName);
@@ -100,14 +108,27 @@ public class Client {
     // Finished a transaction, clear tentative local storage and read server set
     tentativeStorage.clear();
     readLockOccupiedServerSet.clear();
+    for (ServerInterface server : serverInterfaceHashMap.values()) {
+    	
+    	server.getCoordinator().removeFromTransactionTimeMap(transactionId);
+    	
+    	if (server.getCoordinator().containsVertex(transactionId)) {
+    		server.getCoordinator().removeFromGraph(transactionId);
+    	}
+    	break;
+    }
   }
 
   /**
    * Abort a transaction.
    * 1. Release occupied read and write locks
    * 2. Clear temporary storage
+    * @throws RemoteException
    */
-  private void abortTransaction() {
+  private void abortTransaction() throws RemoteException {
+    transactionFlag = false;
+    abortedFlag = true;
+
     // Release writeLocks
     for (String serverName : tentativeStorage.keySet()) {
       ServerInterface targetServer = serverInterfaceHashMap.get(serverName);
@@ -124,6 +145,21 @@ public class Client {
     // Finished a transaction, clear tentative local storage and read server set
     tentativeStorage.clear();
     readLockOccupiedServerSet.clear();
+    for (ServerInterface server : serverInterfaceHashMap.values()) {
+
+    	server.getCoordinator().removeFromTransactionTimeMap(transactionId);
+    	
+    	if (server.getCoordinator().getAbortingTransactionSet().contains(transactionId)) {
+    	  server.getCoordinator().removeFromAbortingTransactionSet(transactionId);
+    	}
+    	
+    	if (server.getCoordinator().containsVertex(transactionId)) {
+    		server.getCoordinator().removeFromGraph(transactionId);
+    	}
+    	
+    	break;
+    }
+    System.out.println("ABORT");
   }
 
   private void releaseAllReadLocks() {
@@ -146,16 +182,26 @@ public class Client {
         switch (inputs[0]) {
           case "SERVERS":
             for (String serverName : serverInterfaceHashMap.keySet()) {
-              System.out.println(serverName);
+              System.err.println(serverName);
             }
-            System.out.println("[END] Total Servers: " + serverInterfaceHashMap.keySet().size());
+            System.err.println("[END] Total Servers: " + serverInterfaceHashMap.keySet().size());
             break;
           case "BEGIN":
+            abortedFlag = false;
             transactionFlag = true;
+            Date date = new Date();
+            Timestamp date_ts = new Timestamp(date.getTime());
+            long l = date_ts.getTime();
+            for (ServerInterface server : serverInterfaceHashMap.values()) {
+            	server.getCoordinator().putIntoTransactionTimeMap(transactionId, l);
+            	break;
+            }
             System.out.println("OK");
             break;
           case "SET":
-            if (!transactionFlag) {
+            if (abortedFlag) {
+              System.out.println("ABORT");
+            } else if (!transactionFlag) {
               System.err.println("Please BEGIN before SET");
             } else if (inputs.length != 3) {
               System.err.println("Invalid command");
@@ -179,7 +225,7 @@ public class Client {
                 }
                 // Make write attempts until "Success"
                 String successFlag = targetServer.tryPut(transactionId, key);
-                while (successFlag.equals("Fail")) {
+                while (successFlag.equals("FAIL")) {
                   try {
                     Thread.sleep(500);
                     successFlag = targetServer.tryPut(transactionId, key);
@@ -187,7 +233,7 @@ public class Client {
                     e.printStackTrace();
                   }
                 }
-                if (successFlag.equals("Abort")) {
+                if (successFlag.equals("ABORT")) {
                   abortTransaction();
                 } else {
                   System.out.println("OK");
@@ -196,7 +242,9 @@ public class Client {
             }
             break;
           case "GET":
-            if (!transactionFlag) {
+            if (abortedFlag) {
+              System.out.println("ABORT");
+            } else if (!transactionFlag) {
               System.err.println("Please BEGIN before GET");
             } else if (inputs.length != 2) {
               System.err.println("Invalid command");
@@ -208,6 +256,7 @@ public class Client {
                 System.err.println("Server [" + serverName + "] doesn't exist");
               } else {
                 ServerInterface targetServer = serverInterfaceHashMap.get(serverName);
+                //? not committed can read?
 
                 HashMap<String, String> fakeServerStorage = tentativeStorage.get(serverName);
                 if (fakeServerStorage != null && fakeServerStorage.containsKey(key)) {
@@ -217,7 +266,7 @@ public class Client {
                   // We do not have this key locally, we need to query servers
                   // Make read attempts until "Success"
                   String successFlag = targetServer.tryGet(transactionId, key);
-                  while (successFlag.equals("Fail")) {
+                  while (successFlag.equals("FAIL")) {
                     try {
                       Thread.sleep(500);
                       successFlag = targetServer.tryGet(transactionId, key);
@@ -225,7 +274,7 @@ public class Client {
                       e.printStackTrace();
                     }
                   }
-                  if (successFlag.equals("Abort")) {
+                  if (successFlag.equals("ABORT")) {
                     System.out.println("NOT FOUND");
                     abortTransaction();
                   } else {
@@ -243,12 +292,10 @@ public class Client {
             }
             break;
           case "COMMIT":
-            transactionFlag = false;
             commitTransaction();
             System.out.println("COMMIT OK");
             break;
           case "ABORT":
-            transactionFlag = false;
             abortTransaction();
             break;
           default:
@@ -257,7 +304,7 @@ public class Client {
       } catch (RemoteException e) {
         e.printStackTrace();
       }
-      input = scan.nextLine();
+      input  = scan.nextLine();
     }
     scan.close();
     System.exit(0);

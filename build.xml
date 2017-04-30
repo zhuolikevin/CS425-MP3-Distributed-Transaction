@@ -3,6 +3,7 @@
     <property name="src.dir" location="src" />
     <property name="build.dir" location="bin" />
     <property name="dist.dir" location="dist" />
+    <property name="lib.dir" location="lib" />
 
     <!-- Deletes the existing build, docs and dist directory-->
     <target name="clean">
@@ -19,6 +20,10 @@
     <!-- Compiles the java code (including the usage of library for JUnit -->
     <target name="compile" depends="clean, makedir">
         <javac srcdir="${src.dir}" destdir="${build.dir}">
+            <classpath>
+                <pathelement path="lib/jgraph-5.13.0.0.jar"/>
+                <pathelement path="lib/jgrapht-core-1.0.1.jar" />
+            </classpath>
         </javac>
     </target>
 
@@ -26,27 +31,30 @@
     <target name="jar" depends="compile">
         <jar destfile="${dist.dir}\cs425-mp3-server.jar"
              basedir="${build.dir}"
-             includes="Server.class, ServerInterface.class, ServerObject.class"
-             excludes="Client.class">
+             includes="Server.class, ServerInterface.class, ServerObject.class, CoordinatorInterface.class"
+             excludes="Client.class, Coordinator.class">
             <manifest>
                 <attribute name="Main-Class" value="Server" />
             </manifest>
+            <zipgroupfileset dir="${lib.dir}" includes="**/*.jar" />
         </jar>
         <jar destfile="${dist.dir}\cs425-mp3-client.jar"
              basedir="${build.dir}"
-             includes="Client.class, ServerInterface.class"
-             excludes="Server.class, ServerObject.class">
+             includes="Client.class, ServerInterface.class, CoordinatorInterface.class"
+             excludes="Server.class, ServerObject.class, Coordinator.class">
             <manifest>
                 <attribute name="Main-Class" value="Client" />
             </manifest>
+            <zipgroupfileset dir="${lib.dir}" includes="**/*.jar" />
         </jar>
         <jar destfile="${dist.dir}\cs425-mp3-coordinator.jar"
              basedir="${build.dir}"
-             includes="Coordinator.class, ServerInterface.class"
+             includes="Coordinator.class, ServerInterface.class, CoordinatorInterface.class, DeadlockDetector.class"
              excludes="Server.class, ServerObject.class, Client.class">
             <manifest>
-                <attribute name="Main-Class" value="Client" />
+                <attribute name="Main-Class" value="Coordinator" />
             </manifest>
+            <zipgroupfileset dir="${lib.dir}" includes="**/*.jar" />
         </jar>
     </target>
 
