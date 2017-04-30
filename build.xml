@@ -49,7 +49,7 @@
         </jar>
         <jar destfile="${dist.dir}\cs425-mp3-coordinator.jar"
              basedir="${build.dir}"
-             includes="Coordinator.class, ServerInterface.class, CoordinatorInterface.class"
+             includes="Coordinator.class, ServerInterface.class, CoordinatorInterface.class, DeadlockDetector.class"
              excludes="Server.class, ServerObject.class, Client.class">
             <manifest>
                 <attribute name="Main-Class" value="Coordinator" />

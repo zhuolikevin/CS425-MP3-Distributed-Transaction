@@ -5,24 +5,17 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Scanner;
-import java.util.Set;
+import java.util.*;
 
 import org.jgraph.graph.DefaultEdge;
-import org.jgrapht.*;
-import org.jgrapht.alg.CycleDetector;
 import org.jgrapht.graph.DefaultDirectedGraph;
-import org.jgrapht.graph.EdgeReversedGraph;
 
 public class Coordinator extends UnicastRemoteObject implements CoordinatorInterface {
 	private static final long serialVersionUID = 1L;
+  private static final String RES_PREFIX = "../res/";
+
 	private String name;
 	private List<ServerInterface> serverInterfaceList;
-	private static final String RES_PREFIX = "../res/";
 	private HashMap<String, Long> transactionTimeMap;
 	private HashSet<String> abortingTransactions;
 	private DefaultDirectedGraph<String, DefaultEdge> graph;
@@ -58,71 +51,47 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
         e.printStackTrace();
       }
     }
-    
+
+    // Set up deadlock detector
+    Timer detectorTimer = new Timer(true);
+    DeadlockDetector detector = new DeadlockDetector(this);
+    detectorTimer.schedule(detector, 0, 500);
+
     userConsole();
   }
 
   @Override 
-  public void addEdgeDetectCycle(String transactionId, HashSet<String> lockOwners) throws RemoteException {
+  public void addEdge(String transactionId, HashSet<String> lockOwners) throws RemoteException {
 	  graph.addVertex(transactionId);
 	  for (String lockOwnerId : lockOwners) {
       graph.addVertex(lockOwnerId);
       graph.addEdge(transactionId, lockOwnerId);
 	  }
-	  
-	  DirectedGraph<String, DefaultEdge> revGraph = new EdgeReversedGraph<>(graph);
-	  DirectedGraph<String, DefaultEdge> graphCopy = new EdgeReversedGraph<>(revGraph);
-      
-	  CycleDetector<String, DefaultEdge> cycleDetector = new CycleDetector<>(graph);
-	  boolean haveCycle = cycleDetector.detectCycles();
-	  while (haveCycle) {
-		  HashSet<String> cycleId = (HashSet<String>) cycleDetector.findCycles();
-		  long maxTimeStamp = 0;
-		  String latestTransaction = null;
-		  for (String id : cycleId) {
-			  if (transactionTimeMap.get(id) > maxTimeStamp) {
-          maxTimeStamp = transactionTimeMap.get(id);
-          latestTransaction = id;
-        }
-		  }
-		  abortingTransactions.add(latestTransaction);
-		  graphCopy.removeVertex(latestTransaction);
-		  // how to judge if a graph is empty
-		  if (!graphCopy.edgeSet().isEmpty()) {
-		  cycleDetector = new CycleDetector<>(graphCopy);
-		  haveCycle = cycleDetector.detectCycles();}
-	  }
-	  return;
+  }
+
+  @Override
+  public DefaultDirectedGraph<String, DefaultEdge> getGraph() throws RemoteException {
+    return graph;
   }
   
   @Override
-  public void putIntoIdtimeMap (String transactionId, long TimeStamp) throws RemoteException {
+  public void putIntoTransactionTimeMap (String transactionId, long TimeStamp) throws RemoteException {
 	  transactionTimeMap.put(transactionId, TimeStamp);
   }
   
   @Override
-  public Long getFromIdtimeMap (String transactionId) throws RemoteException {
-	  return transactionTimeMap.get(transactionId);
-  }
-  
-  @Override
-  public void removeFromIdtimeMap (String transactionId) throws RemoteException {
+  public void removeFromTransactionTimeMap (String transactionId) throws RemoteException {
 	  transactionTimeMap.remove(transactionId);
   }
 
   @Override
-  public HashMap<String, Long> getIdtimeMap() throws RemoteException {
+  public HashMap<String, Long> getTransactionTimeMap() throws RemoteException {
 	  return transactionTimeMap;
   }
   
   @Override
-  public HashSet<String> getIdtoAbort() throws RemoteException {
+  public HashSet<String> getAbortingTransactionSet() throws RemoteException {
 	  return abortingTransactions;
-  }
-  
-  @Override
-  public DirectedGraph<String, DefaultEdge> getGraph() throws RemoteException {
-	  return graph;
   }
   
   @Override 
@@ -131,20 +100,20 @@ public class Coordinator extends UnicastRemoteObject implements CoordinatorInter
   }
   
   @Override
-  public void removeFromIdtoAbort(String transactionId) throws RemoteException {
+  public void removeFromAbortingTransactionSet(String transactionId) throws RemoteException {
 	  abortingTransactions.remove(transactionId);
-  }
-  
-  @Override
-  public Set<String> getVertexSet() throws RemoteException {
-	  return graph.vertexSet();
   }
   
   @Override
   public boolean containsVertex(String transactionId) throws RemoteException {
 	  return graph.containsVertex(transactionId);
   }
- 
+
+  @Override
+  public void addAbortingTransaction(String transactionId) throws RemoteException {
+    abortingTransactions.add(transactionId);
+  }
+
   private void userConsole() throws UnknownHostException {
 	    Scanner scan = new Scanner(System.in);
 	    String input = scan.nextLine();

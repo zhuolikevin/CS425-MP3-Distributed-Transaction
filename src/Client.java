@@ -21,7 +21,9 @@ public class Client {
    * Transaction flag: true for in a transaction, false for not
    */
   private boolean transactionFlag;
-
+  /**
+   * Aborted flag: true for aborted transaction
+   */
   private boolean abortedFlag;
   /**
    * Map server name to remote interface
@@ -108,7 +110,7 @@ public class Client {
     readLockOccupiedServerSet.clear();
     for (ServerInterface server : serverInterfaceHashMap.values()) {
     	
-    	server.getCoordinator().removeFromIdtimeMap(transactionId);
+    	server.getCoordinator().removeFromTransactionTimeMap(transactionId);
     	
     	if (server.getCoordinator().containsVertex(transactionId)) {
     		server.getCoordinator().removeFromGraph(transactionId);
@@ -145,10 +147,10 @@ public class Client {
     readLockOccupiedServerSet.clear();
     for (ServerInterface server : serverInterfaceHashMap.values()) {
 
-    	server.getCoordinator().removeFromIdtimeMap(transactionId);
+    	server.getCoordinator().removeFromTransactionTimeMap(transactionId);
     	
-    	if (server.getCoordinator().getIdtoAbort().contains(transactionId)) {
-    	server.getCoordinator().removeFromIdtoAbort(transactionId);
+    	if (server.getCoordinator().getAbortingTransactionSet().contains(transactionId)) {
+    	  server.getCoordinator().removeFromAbortingTransactionSet(transactionId);
     	}
     	
     	if (server.getCoordinator().containsVertex(transactionId)) {
@@ -191,7 +193,7 @@ public class Client {
             Timestamp date_ts = new Timestamp(date.getTime());
             long l = date_ts.getTime();
             for (ServerInterface server : serverInterfaceHashMap.values()) {
-            	server.getCoordinator().putIntoIdtimeMap(transactionId, l);
+            	server.getCoordinator().putIntoTransactionTimeMap(transactionId, l);
             	break;
             }
             System.out.println("OK");

@@ -2,33 +2,29 @@ import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Set;
 
 import org.jgraph.graph.DefaultEdge;
-import org.jgrapht.DirectedGraph;
+import org.jgrapht.graph.DefaultDirectedGraph;
 
 public interface CoordinatorInterface extends Remote {
 	
-	HashMap<String, Long> getIdtimeMap() throws RemoteException;
+	HashMap<String, Long> getTransactionTimeMap() throws RemoteException;
 	
-  HashSet<String> getIdtoAbort() throws RemoteException;
+  HashSet<String> getAbortingTransactionSet() throws RemoteException;
     
-  void addEdgeDetectCycle(String t1, HashSet<String> t2) throws RemoteException;
+  void addEdge(String transactionId, HashSet<String> lockOwners) throws RemoteException;
 
-	DirectedGraph<String, DefaultEdge> getGraph() throws RemoteException;
+	DefaultDirectedGraph<String, DefaultEdge> getGraph() throws RemoteException;
 
-	void putIntoIdtimeMap(String transactionId, long TimeStamp) throws RemoteException;
+	void putIntoTransactionTimeMap(String transactionId, long TimeStamp) throws RemoteException;
 	
-	void removeFromIdtimeMap (String transactionId) throws RemoteException;
-
-	Long getFromIdtimeMap(String transactionId) throws RemoteException;
+	void removeFromTransactionTimeMap (String transactionId) throws RemoteException;
 
 	void removeFromGraph(String transactionId) throws RemoteException;
 
-	void removeFromIdtoAbort(String transactionId) throws RemoteException;
-
-	Set<String> getVertexSet() throws RemoteException;
+	void removeFromAbortingTransactionSet(String transactionId) throws RemoteException;
 
 	boolean containsVertex(String transactionId) throws RemoteException;
-	
+
+	void addAbortingTransaction(String transactionId) throws RemoteException;
 }

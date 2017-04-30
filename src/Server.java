@@ -84,7 +84,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
   @Override
   public String tryPut(String transactionId, String key) throws RemoteException {
 	  // If coordinator says this transaction should be aborted, tell the client to abort
-    HashSet<String> abortingIdSet = getCoordinator().getIdtoAbort();
+    HashSet<String> abortingIdSet = getCoordinator().getAbortingTransactionSet();
     if (abortingIdSet.contains(transactionId)) {
       return "ABORT";
     }
@@ -117,7 +117,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
         return "SUCCESS";
       } else {
         // Share the readLock with somebody else or occupied by others, we cannot promote
-      	coordinator.addEdgeDetectCycle(transactionId, lockOwners);
+      	coordinator.addEdge(transactionId, lockOwners);
         return "FAIL";
       }
     } else if (targetObj.writeLockOwner != null && targetObj.writeLockOwner.equals(transactionId)) {
@@ -125,7 +125,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
       return "SUCCESS";
     } else {
       // All other cases we can not continue
-      coordinator.addEdgeDetectCycle(transactionId, lockOwners);
+      coordinator.addEdge(transactionId, lockOwners);
       return "FAIL";
     }
   }
@@ -133,7 +133,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
   @Override
   public String tryGet(String transactionId, String key) throws RemoteException {
     // If coordinator says this transaction should be aborted, tell the client to abort
-    HashSet<String> abortingIdSet = getCoordinator().getIdtoAbort();
+    HashSet<String> abortingIdSet = getCoordinator().getAbortingTransactionSet();
     if (abortingIdSet.contains(transactionId)) {
       return "ABORT";
     }
@@ -151,7 +151,7 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
     } else {
       HashSet<String> lockOwners = new HashSet<>();
       lockOwners.add(targetObj.writeLockOwner);
-      coordinator.addEdgeDetectCycle(transactionId, lockOwners);
+      coordinator.addEdge(transactionId, lockOwners);
       // Somebody is writing, we can not read
       return "FAIL";
     }
