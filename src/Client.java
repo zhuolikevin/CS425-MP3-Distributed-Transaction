@@ -256,7 +256,6 @@ public class Client {
                 System.err.println("Server [" + serverName + "] doesn't exist");
               } else {
                 ServerInterface targetServer = serverInterfaceHashMap.get(serverName);
-                //? not committed can read?
 
                 HashMap<String, String> fakeServerStorage = tentativeStorage.get(serverName);
                 if (fakeServerStorage != null && fakeServerStorage.containsKey(key)) {
