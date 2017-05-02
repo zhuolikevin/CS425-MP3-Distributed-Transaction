@@ -159,7 +159,6 @@ public class Client {
     	
     	break;
     }
-    System.out.println("ABORT");
   }
 
   private void releaseAllReadLocks() {
@@ -235,6 +234,7 @@ public class Client {
                 }
                 if (successFlag.equals("ABORT")) {
                   abortTransaction();
+                  System.out.println("ABORT");
                 } else {
                   System.out.println("OK");
                 }
@@ -274,8 +274,8 @@ public class Client {
                     }
                   }
                   if (successFlag.equals("ABORT")) {
-                    System.out.println("NOT FOUND");
                     abortTransaction();
+                    System.out.println("ABORT");
                   } else {
                     // We can read the object
                     readLockOccupiedServerSet.add(serverName);
@@ -296,6 +296,7 @@ public class Client {
             break;
           case "ABORT":
             abortTransaction();
+            System.out.println("ABORT");
             break;
           default:
             System.err.println("Invalid command");

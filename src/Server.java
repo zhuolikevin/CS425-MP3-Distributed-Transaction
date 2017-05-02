@@ -137,9 +137,9 @@ public class Server extends UnicastRemoteObject implements ServerInterface {
     if (abortingIdSet.contains(transactionId)) {
       return "ABORT";
     }
-    // If this key is not set yet, abort the transaction
+    // If this key is not set yet, can success but actual get will get NOT FOUND
     if (!storage.containsKey(key)) {
-      return "ABORT";
+      return "SUCCESS";
     }
     ServerObject targetObj = storage.get(key);
     
